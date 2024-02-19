@@ -1,7 +1,7 @@
 dataset: "ivae"
 subspace: "iva"
 method: "diva"
-experiment: "sim" # "sim" or "img"
+experiment: "img" # "sim" or "img"
 
 n_epochs: 200
 n_modalities: 2
@@ -10,20 +10,20 @@ n_modalities: 2
 eta: [1]
 beta: [0.5]
 lam: [1] #[1.102657790843584]
-data_dim: 5
+data_dim: 15
 n_layers: [2]
-n_segments: 14
-n_obs_per_seg: [200]
+n_segments: 8
+n_obs_per_seg: [350]
 data_seed: 1
 
 # model
 misa:
-  lr: 0.001 
+  lr: 0.001
   n_runs: 1
-  batch_size: 200
+  batch_size: 2907
 
 ivae:
   lr: 0.01
-  batch_size: 140
+  batch_size: 2907
   cuda: True
   max_iter_per_epoch: 10

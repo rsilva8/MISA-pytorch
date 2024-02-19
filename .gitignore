@@ -152,3 +152,7 @@ dmypy.json
 *.pt
 *.npy
 *.zip
+
+# wandb
+*.json
+*.wandb

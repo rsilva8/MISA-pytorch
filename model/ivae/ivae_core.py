@@ -4,6 +4,7 @@ from torch import distributions as dist
 from torch import nn
 from torch.nn import functional as F
 from numbers import Number
+import random
 
 def weights_init(m):
     if isinstance(m, nn.Linear):
@@ -252,9 +253,12 @@ class Bernoulli(Dist):
 
 class iVAE(nn.Module):
     def __init__(self, latent_dim, data_dim, aux_dim, prior=None, decoder=None, encoder=None,
-                 n_layers=3, hidden_dim=50, activation="lrelu", slope=.1, device="cpu", anneal=False, use_aux=False, method="diva"):
+                 n_layers=3, hidden_dim=50, activation="lrelu", slope=.1, device="cpu", 
+                 anneal=False, use_aux=False, method="diva", seed=0):
         super().__init__()
 
+        self.seed = seed
+        self.set_seed()
         self.data_dim = data_dim
         self.latent_dim = latent_dim
         self.aux_dim = aux_dim
@@ -358,3 +362,15 @@ class iVAE(nn.Module):
         self._training_hyperparams[3] = max(1, a * .5 * (1 - it / thr))
         if it > thr:
             self.anneal_params = False
+
+    def set_seed(self, seed_torch = True):
+        if self.seed is None:
+            self.seed = np.random.choice(2 ** 32)
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        if seed_torch:
+            torch.manual_seed(self.seed)
+            torch.cuda.manual_seed_all(self.seed)
+            torch.cuda.manual_seed(self.seed)
+            torch.backends.cudnn.benchmark = False
+            torch.backends.cudnn.deterministic = True

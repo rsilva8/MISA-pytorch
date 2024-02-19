@@ -24,7 +24,6 @@ def parse_sim():
     # required.add_argument('--dataset', type=str, default='TCL', help='Dataset to run experiments. Should be TCL or IMCA')
     required.add_argument('-m', '--method', type=str, default='icebeem',
                         help='Method to employ. Should be TCL, iVAE or ICE-BeeM')
-    required.add_argument('-n', '--n_sims', type=int, default=10, help='Number of simulations to run')
 
     optional.add_argument('-a', '--a_exist', action='store_true', help='Whether the dataset includes ground truth A matrix')
     optional.add_argument('--n_epochs', type=int, default=2000, help='Number of epochs')
@@ -34,6 +33,9 @@ def parse_sim():
     optional.add_argument('--n_sources', type=int, default=30, help='Number of sources')
     optional.add_argument('--n_obs_per_seg', type=int, default=200, help='Number of observations per segment')
     optional.add_argument('--n_segments', type=int, default=14, help='Number of segments')
+    optional.add_argument('--ivae_batch_size', type=int, default=140, help='iVAE batch size')
+    optional.add_argument('--misa_batch_size', type=int, default=200, help='MISA batch size')
+    optional.add_argument('--seed', type=int, default=0, help='Random seed')
 
     parser._action_groups.append(optional)
 
@@ -46,7 +48,7 @@ def parse_sim():
 
 def make_dirs_simulations(args):
     os.makedirs(args.run, exist_ok=True)
-    args.checkpoints = os.path.join(args.run, 'checkpoints', args.config.split('.')[0])
+    args.checkpoints = os.path.join(args.run, 'checkpoints')
     os.makedirs(args.checkpoints, exist_ok=True)
 
 
@@ -93,7 +95,7 @@ if __name__ == '__main__':
         if args.test:
             fname = os.path.join(args.run, 'res_' + args.filename.split('.')[0] + '_' + args.weights + '_test.p')
         elif args.method.lower() in ['ivae', 'misa', 'diva']:
-            fname = os.path.join(args.run, f'res_{args.method.lower()}_source{args.n_sources}_obs{args.n_obs_per_seg}_seg{args.n_segments}_epoch{args.n_epochs}_bsmisa{new_config.misa.batch_size}_bsivae{new_config.ivae.batch_size}_lrivae{args.ivae_lr}_maxiter{args.ivae_max_iter_per_epoch}.p')
+            fname = os.path.join(args.run, f'res_{args.method.lower()}_source{args.n_sources}_obs{args.n_obs_per_seg}_seg{args.n_segments}_epoch{args.n_epochs}_bsmisa{args.misa_batch_size}_bsivae{args.ivae_batch_size}_lrivae{args.ivae_lr}_maxiter{args.ivae_max_iter_per_epoch}_seed{args.seed}.p')
         else:
             fname = os.path.join(args.run, 'res_' + args.filename.split('.')[0] + '_' + args.weights + '.p')
 

@@ -1,3 +1,4 @@
+import wandb
 import numpy as np
 import torch
 from torch import optim
@@ -5,40 +6,29 @@ from torch.utils.data import DataLoader
 from data.imca import ConditionalDataset
 from .ivae_core import iVAE
 
-
-def IVAE_wrapper_(X, U, batch_size=256, max_iter=7e4, seed=0, n_layers=3, hidden_dim=20, lr=1e-3, cuda=True,
-                 ckpt_file='ivae.pt', test=False, model=None):
+def IVAE_wrapper_(X, U, batch_size=256, max_iter=7e4, n_layers=3, hidden_dim=20, lr=1e-3, 
+                  seed=0, cuda=True, ckpt_file='ivae.pt', test=False, model=None):
     " args are the arguments from the main.py file"
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    # device = torch.device('cuda:0' if cuda else 'cpu')
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    # print('training on {}'.format(torch.cuda.get_device_name(device) if cuda else 'cpu'))
 
     # load data
-    # print('Creating shuffled dataset..')
     # TODO optimize redundant code
     dset = ConditionalDataset(X.astype(np.float32), U.astype(np.float32), device)
     loader_params = {'num_workers': 1, 'pin_memory': True} if cuda else {}
     train_loader = DataLoader(dset, shuffle=False, batch_size=batch_size, **loader_params)
-    # data_dim, latent_dim, aux_dim = dset.get_dims()
-    # N = len(dset)
     max_epochs = int(max_iter // len(train_loader) + 1)
     print("length of train loader: ", len(train_loader))
 
-    # define model and optimizer
-    # print('Defining model and optimizer..')
-    # model = iVAE(latent_dim, data_dim, aux_dim, activation='lrelu', device=device,
-    #              n_layers=n_layers, hidden_dim=hidden_dim)
+    # define optimizer and scheduler
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.1, patience=20, verbose=True)
     # training loop
     if not test:
-        # print("Training..")
         it = 0
         model.train()
-        # while it < max_iter:
         for it in range(max_iter):
             elbo_train = 0
             epoch = it // len(train_loader) + 1
@@ -52,7 +42,8 @@ def IVAE_wrapper_(X, U, batch_size=256, max_iter=7e4, seed=0, n_layers=3, hidden
                 elbo_train += -elbo.item()
             elbo_train /= len(train_loader)
             scheduler.step(elbo_train)
-            print('iVAE epoch: {} \titeration: {} \tloss: {}'.format(epoch, it, elbo_train))
+            print('iVAE \titeration: {} \tloss: {}'.format(it, elbo_train))
+            # wandb.log({'iVAE loss': elbo_train})
         # save model checkpoint after training
         torch.save(model.state_dict(), ckpt_file)
     else:

@@ -403,7 +403,7 @@ def gen_ivae_data(Ncomp=10, Nlayer=2, Nsegment=20, NsegmentObs=200, Nmodality=2,
     # Nmodality=2
     # source='Gaussian'
     NonLin='leaky'
-    negSlope=.2 # why is negative slope a positive number?
+    negSlope=.2
     # varyMean=False
     # Niter4condThresh=1e4
 
@@ -419,8 +419,7 @@ def gen_ivae_data(Ncomp=10, Nlayer=2, Nsegment=20, NsegmentObs=200, Nmodality=2,
     data_list = []
     mixingList = []
 
-    correlation = np.diag(np.random.uniform(0.6, 0.8, Ncomp))
-    # correlation = np.diag(np.linspace(0.7, 0.8, Ncomp))
+    correlation = np.diag(np.random.uniform(0.7, 0.9, Ncomp))
 
     for i in range(Nsegment):
         ic = i % Ncomp

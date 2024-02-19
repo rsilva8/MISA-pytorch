@@ -6,7 +6,7 @@ from scipy.optimize import linear_sum_assignment
 from scipy.stats import spearmanr
 from scipy.stats import trim_mean
 
-def rdc(x, y, k=20, s=.5, nonlinearity='sin'):
+def rdc(x, y, k=10, s=.5, nonlinearity='sin', seed=0):
     """
     Python implementation of the Randomized Dependence Coefficient (RDC) [1] algorithm
     the RDC is a measure of correlation between two (scalar) random variables x and y
@@ -26,13 +26,13 @@ def rdc(x, y, k=20, s=.5, nonlinearity='sin'):
     [1] https://papers.nips.cc/paper/2013/file/aab3238922bcc25a6f606eb525ffdc56-Paper.pdf
 
     """
-    cx = copula_projection(x, k, s, nonlinearity)
-    cy = copula_projection(y, k, s, nonlinearity)
+    cx = copula_projection(x, k, s, nonlinearity, seed)
+    cy = copula_projection(y, k, s, nonlinearity, seed)
     rdc_cc = largest_cancorr(cx, cy)
     return rdc_cc
 
 
-def copula_projection(x, k=20, s=.5, nonlinearity='sin'):
+def copula_projection(x, k=20, s=.5, nonlinearity='sin', seed=0):
     n = x.shape[0]
     k = min(k, n)
     # compute the empirical cdf (copula) of x evaluated at x
@@ -40,6 +40,7 @@ def copula_projection(x, k=20, s=.5, nonlinearity='sin'):
     # augment the copula with 1
     pt = np.vstack([p, np.ones(n)]).T  # (n, 2)
     # sample k random weights
+    # np.random.seed(seed)
     wt = np.random.normal(0, s, size=(pt.shape[1], k))
     # wt = np.random.randn(2, k)
     # phix = np.sin(s/pt.shape[1]*pt.dot(wt))  # (n, k)
@@ -385,7 +386,7 @@ def mean_corr_coef_pt(x, y, method='pearson'):
         raise ValueError('not a valid method: {}'.format(method))
     cc = torch.abs(cc)
     score, _, _ = auction_linear_assignment(cc, reduce='mean')
-    return score
+    return score, cc
 
 
 def mean_corr_coef_np(x, y, method='rdc'):
@@ -421,7 +422,7 @@ def mean_corr_coef_np(x, y, method='rdc'):
     # score = cc[linear_sum_assignment(-1 * cc)].mean()
     cc_sorted = cc[linear_sum_assignment(-1 * cc)]
     score = [trim_mean(cc_sorted, 0.25), np.mean(cc_sorted), np.min(cc_sorted)]
-    return score
+    return score, cc
 
 
 def mean_corr_coef(x, y, method='rdc'):
@@ -474,7 +475,7 @@ def mean_corr_coef_per_segment(x, y, u, method='rdc'):
             raise ValueError('not a valid method: {}'.format(method))
         cc_list.append(cc)
         cc_tot += cc
-    
+    # average vs maximum
     cc_avg = cc_tot/n_seg
     cc_avg_sorted = cc_avg[linear_sum_assignment(-1 * cc_avg)]
     score = [trim_mean(cc_avg_sorted, 0.25), np.mean(cc_avg_sorted), np.min(cc_avg_sorted)]
@@ -519,9 +520,8 @@ def compute_rdc(x, y, u, method='rdc'):
             elif method == 'rdc':
                 cc = np.zeros((d, d))
                 for i in range(x_seg.shape[1]):
-                    for j in range(i, y_seg.shape[1]):
+                    for j in range(y_seg.shape[1]):
                         cc[i, j] = np.abs(rdc(x_seg[:, i], y_seg[:, j]))
-                        cc[j, i] = cc[i, j]
             else:
                 raise ValueError('not a valid method: {}'.format(method))
             cc_pm_list.append(cc)

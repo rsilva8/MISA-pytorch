@@ -8,8 +8,8 @@ n_modalities: 2
 
 # data
 eta: [1]
-beta: [0.5]
-lam: [1] #[1.102657790843584]
+beta: [1]
+lam: [0.5] #[1.102657790843584]
 data_dim: 5
 n_layers: [2]
 n_segments: 14
