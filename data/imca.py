@@ -13,14 +13,17 @@ class ConditionalDataset(Dataset):
     used in `models.ivae.ivae_wrapper.IVAE_wrapper()`
     """
 
-    def __init__(self, X, Y, device='cpu'):
+    def __init__(self, X, Y, device='cpu', latent_dim=None):
         self.device = device
         self.x = torch.from_numpy(X)  # .to(device)
         self.y = torch.from_numpy(Y)  # .to(device)  # if discrete, then this should be one_hot
         self.len = self.x.shape[0]
         self.aux_dim = self.y.shape[1]
         self.data_dim = self.x.shape[1]
-        self.latent_dim = self.data_dim
+        if latent_dim is not None:
+            self.latent_dim = latent_dim
+        else:
+            self.latent_dim = self.data_dim
 
     def __len__(self):
         return self.len

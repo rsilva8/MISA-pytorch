@@ -80,13 +80,13 @@ def run_misa(args, config):
     if 'lam' in config:
         lam = config.lam
 
-    if config.misa.n_runs != []:
-        n_runs = config.misa.n_runs
+    if config.misa.n_run != []:
+        n_run = config.misa.n_run
     else:
-        n_runs = loguniform_int(0, 10).rvs(size=1)[0]
+        n_run = loguniform_int(0, 10).rvs(size=1)[0]
     
-    if config.n_epochs != []:
-        epochs = config.n_epochs
+    if config.n_epoch != []:
+        epochs = config.n_epoch
     else:
         # the integer type returned by loguniform_int is int64, 
         # which can't recognized as an int in DataLoader,
@@ -103,13 +103,13 @@ def run_misa(args, config):
     else:
         lr = loguniform.rvs(0.00001, 0.1, size=1)[0]
     
-    # results = {l: {n: [] for n in data_seed} for l in n_layers}
+    # results = {l: {n: [] for n in data_seed} for l in n_layer}
 
-    # recovered_sources = {l: {n: [] for n in data_seed} for l in n_layers}
+    # recovered_sources = {l: {n: [] for n in data_seed} for l in n_layer}
     recovered_sources = []
     final_MISIs = []
 
-    # for l in n_layers:
+    # for l in n_layer:
     #     for n in data_seed:
     if data.lower() == 'mat':
         # load the data
@@ -185,7 +185,7 @@ def run_misa(args, config):
         elif mask_name.lower() in ['ukb2907-smri-aal2']:
             pass
 
-    for seed in range(n_runs):
+    for seed in range(n_run):
         # print('Running exp with L={} and n={}; seed={}'.format(l, n, seed))
         
         if data.lower() == 'mat':

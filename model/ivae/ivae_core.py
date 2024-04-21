@@ -12,21 +12,21 @@ def weights_init(m):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dim, n_layers, activation='none', slope=.1, device='cpu'):
+    def __init__(self, input_dim, output_dim, hidden_dim, n_layer, activation='none', slope=.1, device='cpu'):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.n_layers = n_layers
+        self.n_layer = n_layer
         self.device = device
         if isinstance(hidden_dim, Number):
-            self.hidden_dim = [hidden_dim] * (self.n_layers - 1)
+            self.hidden_dim = [hidden_dim] * (self.n_layer - 1)
         elif isinstance(hidden_dim, list):
             self.hidden_dim = hidden_dim
         else:
             raise ValueError('Wrong argument type for hidden_dim: {}'.format(hidden_dim))
 
         if isinstance(activation, str):
-            self.activation = [activation] * (self.n_layers - 1)
+            self.activation = [activation] * (self.n_layer - 1)
         elif isinstance(activation, list):
             self.hidden_dim = activation
         else:
@@ -45,13 +45,14 @@ class MLP(nn.Module):
             else:
                 ValueError('Incorrect activation: {}'.format(act))
 
-        if self.n_layers == 1:
+        if self.n_layer == 1:
             _fc_list = [nn.Linear(self.input_dim, self.output_dim)]
         else:
             _fc_list = [nn.Linear(self.input_dim, self.hidden_dim[0])]
-            for i in range(1, self.n_layers - 1):
+            for i in range(1, self.n_layer - 1):
+                # TODO dropout
                 _fc_list.append(nn.Linear(self.hidden_dim[i - 1], self.hidden_dim[i]))
-            _fc_list.append(nn.Linear(self.hidden_dim[self.n_layers - 2], self.output_dim))
+            _fc_list.append(nn.Linear(self.hidden_dim[self.n_layer - 2], self.output_dim))
         self.fc = nn.ModuleList(_fc_list)
         self.to(self.device)
 
@@ -62,31 +63,31 @@ class MLP(nn.Module):
 
     def forward(self, x):
         h = x
-        for c in range(self.n_layers):
-            if c == self.n_layers - 1:
+        for c in range(self.n_layer):
+            if c == self.n_layer - 1:
                 h = self.fc[c](h)
             else:
                 h = self._act_f[c](self.fc[c](h))
         return h
 
 class MLP_aux(nn.Module):
-    def __init__(self, input_dim, output_dim, hidden_dim, n_layers, activation='none', slope=.1, device='cpu', use_aux=False, aux_dim=None):
+    def __init__(self, input_dim, output_dim, hidden_dim, n_layer, activation='none', slope=.1, device='cpu', use_aux=False, aux_dim=None):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.n_layers = n_layers
+        self.n_layer = n_layer
         self.device = device
         self.use_aux = use_aux
         self.aux_dim = aux_dim
         if isinstance(hidden_dim, Number):
-            self.hidden_dim = [hidden_dim] * (self.n_layers - 1)
+            self.hidden_dim = [hidden_dim] * (self.n_layer - 1)
         elif isinstance(hidden_dim, list):
             self.hidden_dim = hidden_dim
         else:
             raise ValueError('Wrong argument type for hidden_dim: {}'.format(hidden_dim))
 
         if isinstance(activation, str):
-            self.activation = [activation] * (self.n_layers - 1)
+            self.activation = [activation] * (self.n_layer - 1)
         elif isinstance(activation, list):
             self.hidden_dim = activation
         else:
@@ -105,17 +106,17 @@ class MLP_aux(nn.Module):
             else:
                 ValueError('Incorrect activation: {}'.format(act))
 
-        if self.n_layers == 1:
+        if self.n_layer == 1:
             _fc_list = [nn.Linear(self.input_dim, self.output_dim)]
         else:
             _fc_list = [nn.Linear(self.input_dim, self.hidden_dim[0])]
-            for i in range(1, self.n_layers - 1):
+            for i in range(1, self.n_layer - 1):
                 _fc_list.append(nn.Linear(self.hidden_dim[i - 1], self.hidden_dim[i]))
-            _fc_list.append(nn.Linear(self.hidden_dim[self.n_layers - 2], self.output_dim))
+            _fc_list.append(nn.Linear(self.hidden_dim[self.n_layer - 2], self.output_dim))
         self.fc = nn.ModuleList(_fc_list)
 
         if use_aux:
-            if n_layers == 1:
+            if n_layer == 1:
                 _aux_fc_list = [nn.Linear(self.aux_dim, self.output_dim, bias=False)]
             else:
                 _aux_fc_list = [nn.Linear(self.aux_dim, self.hidden_dim[0], bias=False)]
@@ -131,10 +132,10 @@ class MLP_aux(nn.Module):
         h = x[:,:self.input_dim] # data
         hu = x[:,self.input_dim:] # auxilliary information
         
-        for c in range(self.n_layers):
-            if self.n_layers == 1 and self.use_aux:
+        for c in range(self.n_layer):
+            if self.n_layer == 1 and self.use_aux:
                 h = self.fc[c](h) + self.aux_fc[c](hu)
-            elif c == self.n_layers - 1:
+            elif c == self.n_layer - 1:
                 h = self.fc[c](h)
             elif c == 0 and self.use_aux:
                 h = self._act_f[c](self.fc[c](h) + self.aux_fc[c](hu))
@@ -253,7 +254,7 @@ class Bernoulli(Dist):
 
 class iVAE(nn.Module):
     def __init__(self, latent_dim, data_dim, aux_dim, prior=None, decoder=None, encoder=None,
-                 n_layers=3, hidden_dim=50, activation="lrelu", slope=.1, device="cpu", 
+                 n_layer=3, hidden_dim=50, activation="lrelu", slope=.1, device="cpu", 
                  anneal=False, use_aux=False, method="diva", seed=0):
         super().__init__()
 
@@ -263,7 +264,7 @@ class iVAE(nn.Module):
         self.latent_dim = latent_dim
         self.aux_dim = aux_dim
         self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
+        self.n_layer = n_layer
         self.activation = activation
         self.slope = slope
         self.anneal_params = anneal
@@ -288,21 +289,21 @@ class iVAE(nn.Module):
         # prior params
         self.prior_mean = torch.zeros(1).to(device)
         if method == "diva":
-            self.logl = MLP_aux(aux_dim, latent_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device, use_aux=False)
+            self.logl = MLP_aux(aux_dim, latent_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device, use_aux=False)
             # decoder params
-            self.f = MLP_aux(latent_dim, data_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device, use_aux=False)
+            self.f = MLP_aux(latent_dim, data_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device, use_aux=False)
             self.decoder_var = .01 * torch.ones(1).to(device)
             # encoder params
-            self.g = MLP_aux(data_dim, latent_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device, use_aux=self.use_aux, aux_dim=aux_dim)
-            self.logv = MLP_aux(data_dim, latent_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device, use_aux=self.use_aux, aux_dim=aux_dim)
-        elif method == "ivae":
-            self.logl = MLP(aux_dim, latent_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device)
+            self.g = MLP_aux(data_dim, latent_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device, use_aux=self.use_aux, aux_dim=aux_dim)
+            self.logv = MLP_aux(data_dim, latent_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device, use_aux=self.use_aux, aux_dim=aux_dim)
+        elif method in ["ivae", "jivae", "givae"]:
+            self.logl = MLP(aux_dim, latent_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device)
             # decoder params
-            self.f = MLP(latent_dim, data_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device)
+            self.f = MLP(latent_dim, data_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device)
             self.decoder_var = .01 * torch.ones(1).to(device)
             # encoder params
-            self.g = MLP(data_dim + aux_dim, latent_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device)
-            self.logv = MLP(data_dim + aux_dim, latent_dim, hidden_dim, n_layers, activation=activation, slope=slope, device=device)
+            self.g = MLP(data_dim + aux_dim, latent_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device)
+            self.logv = MLP(data_dim + aux_dim, latent_dim, hidden_dim, n_layer, activation=activation, slope=slope, device=device)
 
         self.apply(weights_init)
 

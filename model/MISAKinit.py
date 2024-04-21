@@ -8,7 +8,7 @@ import scipy.io as sio
 from metrics.misi import MISI
 
 class MISA(nn.Module):
-    def __init__(self, weights=list(), index=None, subspace=list(), beta=0.5, eta=1, lam=1, input_dim=list(), output_dim=list(), bias=False, seed=0, device='cpu', model=None, latent_dim=15):
+    def __init__(self, weights=list(), index=None, subspace=list(), beta=0.5, eta=1, lam=1, input_dim=list(), output_dim=list(), bias=False, seed=0, device='cpu', model=None, latent_dim=None):
         # Read identity matrix from columns to rows, ie source = columns and subspace = rows
         super(MISA, self).__init__()
         self.seed = seed
@@ -79,12 +79,15 @@ class MISA(nn.Module):
             self.output = [l(x[i]) if isinstance(l, nn.Linear) else None for i, l in enumerate(self.net)]
         else:
             # iVAE
-            z = []
+            Tz_mean, Tz_var = [], []
             for m in range(self.n_modality):
                 encoder_params = self.input_model[m].encoder_params(x[0][:,:,m], x[1]) #x[0]: input data, x[1]: auxiliary information
                 # z.append(self.input_model[m].encoder_dist.sample(*encoder_params))
-                z.append(encoder_params[0]) # mean
-            self.output = z
+                Tz_mean.append(encoder_params[0]) # mean
+                Tz_var.append(encoder_params[1]) # variance
+            Tz_meansum = torch.sum(torch.stack(Tz_mean), dim=0) # sum up T(z) from all modalities, if not torch.sum, not track computational graph for backpropagation
+            Tz = [Tz_meansum + torch.normal(torch.zeros(Tz_meansum.size()), torch.sqrt(Tz_var[i])) for i in range(self.n_modality)] # add random noise to each aggregated T(z)
+            self.output = Tz
 
     def loss(self, x=None, approximate_jacobian=False):
         JE = 0
@@ -155,7 +158,7 @@ class MISA(nn.Module):
             JD = JD - torch.mean(torch.stack(jd))
             
         J = JE + JF + JC + JD + fc
-        wandb.log({'J': J, 'JE': JE, 'JF': JF, 'JC': JC, 'JD': JD, 'fc': fc})
+        # wandb.log({'J': J, 'JE': JE, 'JF': JF, 'JC': JC, 'JD': JD, 'fc': fc})
         return J
 
     def train_me(self, train_data, n_iter, learning_rate, A=None):
@@ -170,6 +173,7 @@ class MISA(nn.Module):
         # TODO implement a scheduler
         # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.1, patience=20, verbose=True)
         training_loss = []
+        batch_loss = []
         training_MISI = []        
         trigger_times = 0
         nn_weight_threshold = 1e-12
@@ -177,18 +181,16 @@ class MISA(nn.Module):
         patience = 2
         
         for it in range(n_iter):
-            batch_loss = []
             for i, data in enumerate(train_data, 0):
-                # print("data shape", data[0].shape)
                 # if the number of samples in one batch is less than the number of sources or modalities, skip this batch
-                if data[0].shape[0] <= max(self.latent_dim, self.n_modality)*2:
+                if data[0].shape[0] <= max(data[0].shape[1], self.n_modality)*2:
                     continue
                 optimizer.zero_grad()
                 self.forward(data)
                 loss = self.loss(x=data)
                 loss.backward()
                 optimizer.step()
-                batch_loss.append(loss.detach().cpu().numpy())
+                batch_loss.append(loss.detach())
             training_loss.append(batch_loss)
             # scheduler.step(np.mean(np.array(batch_loss)))
             
@@ -196,9 +198,9 @@ class MISA(nn.Module):
                 training_MISI.append(MISI([nn.weight.detach().cpu().numpy() for nn in self.net],A,[ss.detach().cpu().numpy() for ss in self.subspace])[0])
                 print('MISA \tloss: {} \tMISI: {}'.format(loss.detach().cpu().numpy(), training_MISI[-1]))
             else:
-                training_loss_last_iter = training_loss[-1]
-                loss_np = np.mean(training_loss_last_iter)
-                # print('MISA \tloss: {}'.format(loss_np))
+                loss_np = loss.detach().cpu().numpy()
+                print('MISA \tloss: {}'.format(loss_np))
+                # wandb.log({'MISA loss': loss_np})
             
             # early stop
             # if it == 0: 
@@ -229,7 +231,7 @@ class MISA(nn.Module):
         for i, data in enumerate(test_data, 0):
             self.forward(data)
             loss = self.loss(x=data)
-            test_loss.append(loss.detach().cpu().numpy())
+            test_loss.append(loss.detach())
         return test_loss
 
 if __name__ == "__main__":
