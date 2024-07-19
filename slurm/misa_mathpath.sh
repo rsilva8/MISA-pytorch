@@ -2,7 +2,7 @@
 #SBATCH -e /data/users3/rsilva/MISA-pytorch/slurm_logs/error%A-%a.err
 #SBATCH -o /data/users3/rsilva/MISA-pytorch/slurm_logs/out%A-%a.out
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=rsilva@student.gsu.edu
+#SBATCH --mail-user=rsilva@gsu.edu
 #SBATCH --chdir=/data/users3/rsilva/MISA-pytorch
 #
 #SBATCH -p qTRDGPU
